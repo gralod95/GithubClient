@@ -78,7 +78,6 @@
     if(rootViewControllerDidAppear && !inPresentingProgress)
     {
         NSTimeInterval timeInterval = [viewControllerPresentedDate timeIntervalSinceNow];
-        //NSLog(@"timeInterval %f", timeInterval);
         if (timeInterval > -1.1f)
             return false;
         else
@@ -98,20 +97,16 @@
 
 - (void)setStateWithInt:(NSInteger) aStateInt
 {
-//    NSLog(@"setStateWithInt");
     [self setState:(GHCPresenterState)aStateInt];
 }
 
 - (void)setState:(GHCPresenterState) aState
 {
-//    NSLog(@"setState");
-    //if(!rootViewController)
+    if(rootViewController != [UIViewController new])
         dispatch_async(dispatch_get_main_queue(), ^{
             self->rootViewController = [[(AppDelegate*)
                                          [[UIApplication sharedApplication]delegate] window] rootViewController];
         });
-    //NSLog(@"rootViewController: %@", rootViewController);
-//    NSLog(@"state: %u", aState);
     state = aState;
     [self updatePresentingViewController];
     
@@ -119,22 +114,18 @@
 
 - (void)updatePresentingViewController
 {
-//    NSLog(@"Presenter_updatePresentingViewController");
     UIViewController *presentingVC = [wireframe getViewControllerForState:state];
+    
     if (presentingVC != [UIViewController new])
     {
-        if (presentingVC.restorationIdentifier == presentedViewControllerRestorationIdentifier)
-            return;
-        else if ([self canPresentViewController])
+        if ([self canPresentViewController])
         {
-//            NSLog(@"way_1");
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self presentViewController:presentingVC];
             });
         }
         else
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-//                NSLog(@"way_2");
                 self->presentingLineLeight ++;
                 NSInteger viewControllerPresentingLineNumber = self->presentingLineLeight;
                 while (viewControllerPresentingLineNumber > 1)
@@ -157,33 +148,42 @@
 //    NSLog(@"Presenter_presentViewController");
 //    NSLog(@"method info: \n presentedViewControllerRestorationIdentifier: %@, \n aViewController.restorationIdentifier: %@", presentedViewControllerRestorationIdentifier, aViewController.restorationIdentifier);
     
-    
     inPresentingProgress = true;
     if([presentedViewControllerRestorationIdentifier isEqual:aViewController.restorationIdentifier])
     {
+        NSLog(@"update view controller");
         [[NSNotificationCenter defaultCenter] postNotificationName:@"setNeedsUpdateViewControllersData" object:nil];
+        self->presentedViewControllerRestorationIdentifier = aViewController.restorationIdentifier;
         self->inPresentingProgress = false;
         self->presentingLineLeight --;
     }
     else if (![rootViewController presentedViewController])
+    {
+        NSLog(@"load new view controller");
         [self presentViewControllerInRootViewController:aViewController];
+    }
     else
+    {
+        NSLog(@"close old viewcontroller and load new view controller");
         [[self->rootViewController presentedViewController]
          dismissViewControllerAnimated:false
          completion:^{
              [self presentViewControllerInRootViewController:aViewController];
          }];
+    }
     viewControllerPresentedDate = [NSDate date];
 }
 - (void)presentViewControllerInRootViewController:(UIViewController *)aViewController
 {
+    self->presentedViewControllerRestorationIdentifier = aViewController.restorationIdentifier;
     [self->rootViewController presentViewController:aViewController
                                            animated:true
-                                         completion:^{
-                                             self->presentedViewControllerRestorationIdentifier = aViewController.restorationIdentifier;
-                                             self->inPresentingProgress = false;
-                                             self->presentingLineLeight --;
-                                         }];
+                                         completion:^
+     {
+         self->inPresentingProgress = false;
+         self->presentingLineLeight --;
+         
+     }];
 }
 
 #pragma mark
@@ -226,7 +226,7 @@ didEnterActionInViewController:(UIViewController *)aViewController
 }
 
 #pragma mark
-#pragma mark AuthorizationErrorViewControllerDelegate && UsersRepositoriesViewControllerDelegate
+#pragma mark AuthorizationErrorViewControllerDelegate && UsersRepositoriesViewControllerDelegate && RepositoryInfoViewControllerDelegate
 #pragma mark
 
 - (NSString *)getContentTextForLabel:(UILabel *)aLabel
@@ -280,6 +280,24 @@ didEnterActionInViewController:(UIViewController *)aViewController
     return [UIImage new];
 }
 
+- (void)exitActionInViewController:(UIViewController *)aViewController
+{
+    NSLog(@"Presenter_exitActionInViewController");
+    if([[aViewController restorationIdentifier] isEqual:USERS_REPOSITORIES_VIEW_CONTROLLER_IDENTIFIER])
+    {
+        [interactor logoutAction];
+    }
+    if([[aViewController restorationIdentifier] isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
+    {
+        [interactor repoInfoCloseAction];
+    }
+    else
+        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
+}
+
+#pragma mark
+#pragma mark UsersRepositoriesViewControllerDelegate && RepositoryInfoViewControllerDelegate
+#pragma mark
 - (void)reloadDataActionInViewController:(UIViewController *)aViewController
 {
     if([[aViewController restorationIdentifier] isEqual:USERS_REPOSITORIES_VIEW_CONTROLLER_IDENTIFIER])
@@ -313,6 +331,9 @@ didEnterActionInViewController:(UIViewController *)aViewController
         NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
 }
 
+#pragma mark
+#pragma mark UsersRepositoriesViewControllerDelegate && RepositoryInfoViewControllerDelegate
+#pragma mark
 - (UIImage *)getBackgroundImageForButton:(UIButton *)aButton
                         inViewController:(UIViewController *)aViewController
 {
@@ -355,17 +376,73 @@ didEnterActionInViewController:(UIViewController *)aViewController
     return [UIImage new];
 }
 
-
-- (void)exitActionInViewController:(UIViewController *)aViewController
+#pragma mark
+#pragma mark RepositoryInfoViewControllerDelegate
+#pragma mark
+- (BOOL)getEnableStateForButton:(UIButton *)aButton
+               inViewController:(UIViewController *)aViewController
 {
-    NSLog(@"Presenter_exitActionInViewController");
-    if([[aViewController restorationIdentifier] isEqual:USERS_REPOSITORIES_VIEW_CONTROLLER_IDENTIFIER])
+    if([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
     {
-        [interactor logoutAction];
+        //TODO: realise this line of method
+        if([aButton.restorationIdentifier isEqual:BACK_BUTTON_RESTORATION_IDENTIFIER])
+            switch (state)
+        {
+            case GHCRepositoryInfoPresentingState:
+                //get list number from interator
+                if([interactor presentingFirstRepoCommitsList])
+                    return false;
+                else
+                    return true;
+                break;
+                
+            case GHCRepositoryInfoLoadingPresentingState:
+            case GHCRepositoryInfoLoadingErrorPresentingState:
+                return false;
+                break;
+            default:
+                NSLog(@"unreachable state");
+                break;
+        }
+        if([aButton.restorationIdentifier isEqual:NEXT_BUTTON_RESTORATION_IDENTIFIER])
+            switch (state)
+        {
+            case GHCRepositoryInfoPresentingState:
+                //get list number from interator
+                if([interactor presentingLastRepoCommitsList])
+                    return false;
+                else
+                    return true;
+                break;
+            case GHCRepositoryInfoLoadingErrorPresentingState:
+            case GHCRepositoryInfoLoadingPresentingState:
+                return false;
+                break;
+            default:
+                NSLog(@"unreachable state");
+                break;
+        }
     }
-    if([[aViewController restorationIdentifier] isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
+    else
+        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
+    return false;
+}
+
+- (void)backActionInViewController:(UIViewController *)aViewController
+{
+    if ([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
     {
-        [interactor repoInfoCloseAction];
+        [interactor presentPreviousListActionInCommintTableView];
+    }
+    else
+        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
+}
+
+- (void)nextActionInViewController:(UIViewController *)aViewController
+{
+    if ([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
+    {
+        [interactor presentNextListActionInCommintTableView];
     }
     else
         NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
@@ -548,7 +625,6 @@ didEnterActionInViewController:(UIViewController *)aViewController
     }
     else if([tableView.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_GENERAL_TABLE_VIEW_IDENTIFIER])
     {
-        //TODO: realise this line of method
         switch (state) {
             case GHCRepositoryInfoPresentingState:
                 [self setupCommitTableViewCell:(CommitTableViewCell *)cell
@@ -655,8 +731,6 @@ didEnterActionInViewController:(UIViewController *)aViewController
 }
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-//    NSLog(@"Presenter_didSelectRowAtIndexPath");
-    //TODO: realise this method
     if([tableView.restorationIdentifier isEqual:USERS_REPOSITORIES_VIEW_CONTROLLER_GENERAL_TABLE_VIEW_IDENTIFIER])
     {
         NSLog(@"didSelectRowAtIndexPath: %@", indexPath);
@@ -665,76 +739,10 @@ didEnterActionInViewController:(UIViewController *)aViewController
     }
     else if([tableView.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_GENERAL_TABLE_VIEW_IDENTIFIER])
     {
-        //TODO: realise this line of method
     }
     else
         NSLog(@"unknown table view: %@", tableView);
 }
-- (BOOL)getEnableStateForButton:(UIButton *)aButton
-               inViewController:(UIViewController *)aViewController
-{
-    if([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
-    {
-        //TODO: realise this line of method
-        if([aButton.restorationIdentifier isEqual:BACK_BUTTON_RESTORATION_IDENTIFIER])
-            switch (state)
-        {
-            case GHCRepositoryInfoPresentingState:
-                //get list number from interator
-                if([interactor presentingFirstRepoCommitsList])
-                    return false;
-                else
-                    return true;
-                break;
-                
-            case GHCRepositoryInfoLoadingPresentingState:
-            case GHCRepositoryInfoLoadingErrorPresentingState:
-                return false;
-                break;
-            default:
-                NSLog(@"unreachable state");
-                break;
-        }
-        if([aButton.restorationIdentifier isEqual:NEXT_BUTTON_RESTORATION_IDENTIFIER])
-            switch (state)
-        {
-            case GHCRepositoryInfoPresentingState:
-                //get list number from interator
-                if([interactor presentingLastRepoCommitsList])
-                    return false;
-                else
-                    return true;
-                break;
-            case GHCRepositoryInfoLoadingErrorPresentingState:
-            case GHCRepositoryInfoLoadingPresentingState:
-                return false;
-                break;
-            default:
-                NSLog(@"unreachable state");
-                break;
-        }
-    }
-    else
-        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
-    return false;
-}
 
-- (void)backActionInViewController:(UIViewController *)aViewController
-{
-    if ([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
-    {
-        [interactor presentPreviousListActionInCommintTableView];
-    }
-    else
-        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
-}
-- (void)nextActionInViewController:(UIViewController *)aViewController
-{
-    if ([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
-    {
-        [interactor presentNextListActionInCommintTableView];
-    }
-    else
-        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
-}
+
 @end

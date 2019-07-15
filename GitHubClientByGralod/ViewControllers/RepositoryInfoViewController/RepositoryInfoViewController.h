@@ -14,9 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
                     inViewController:(UIViewController *_Nullable)aViewController;
 - (UIImage *)getBackgroundImageForButton:(UIButton *)aImageView
                         inViewController:(UIViewController *_Nullable)aViewController;
-- (BOOL)getEnableStateForButton:(UIButton *)aButton
-               inViewController:(UIViewController *_Nullable)aViewController;
 - (BOOL)getHiddenStateForButton:(UIButton *)aButton
+               inViewController:(UIViewController *_Nullable)aViewController;
+- (BOOL)getEnableStateForButton:(UIButton *)aButton
                inViewController:(UIViewController *_Nullable)aViewController;
 
 - (void)reloadDataActionInViewController:(UIViewController *)aViewController;

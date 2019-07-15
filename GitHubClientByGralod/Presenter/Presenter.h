@@ -37,9 +37,10 @@ didEnterActionInViewController:(id)aViewController;
 - (UIImage *)getBackgroundImageForButton:(id)aImageView
                         inViewController:(id)aViewController;
 //RepositoryInfoViewControllerDelegate
+- (BOOL)getHiddenStateForButton:(id)aButton
+               inViewController:(id)aViewController;
 - (BOOL)getEnableStateForButton:(id)aButton
                inViewController:(id)aViewController;
-//RepositoryInfoViewControllerDelegate
 - (void)backActionInViewController:(UIViewController *)aViewController;
 - (void)nextActionInViewController:(UIViewController *)aViewController;
 //UITableViewDataSource

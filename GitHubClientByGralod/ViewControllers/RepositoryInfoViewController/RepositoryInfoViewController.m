@@ -33,11 +33,6 @@
                                              selector:@selector(updateViewControllersData)
                                                  name:@"setNeedsUpdateViewControllersData"
                                                object:nil];
-    
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(setNextButtonUnable)
-                                                 name:@"RepositoryInfoViewController_setNextButtonUnable"
-                                               object:nil];
     [self updateViewControllersData];
 }
 
@@ -45,15 +40,22 @@
 {
     NSLog(@"UsersRepositoriesViewController_updateViewControllersData");
     if([self.delegate respondsToSelector:@selector(getBackgroundImageForButton:inViewController:)]
-       &&[self.delegate respondsToSelector:@selector(getEnableStateForButton:inViewController:)])
+       &&[self.delegate respondsToSelector:@selector(getEnableStateForButton:inViewController:)]
+       &&[self.delegate respondsToSelector:@selector(getHiddenStateForButton:inViewController:)])
     {
         [self.reloadDataButton setImage:[self.delegate getBackgroundImageForButton:self.reloadDataButton
                                                                   inViewController:self]
                                forState:UIControlStateNormal];
-        [self.backButton setHidden:![self.delegate getEnableStateForButton:self.backButton
+        [self.backButton setHidden:[self.delegate getHiddenStateForButton:self.backButton
                                                           inViewController:self]];
-        [self.nextButton setHidden:![self.delegate getEnableStateForButton:self.nextButton
+        [self.nextButton setHidden:[self.delegate getHiddenStateForButton:self.nextButton
                                                           inViewController:self]];
+        
+        if([self.delegate getEnableStateForButton:self.nextButton
+                                 inViewController:self])
+            [self setNextButtonEnable];
+        else
+            [self setNextButtonUnable];
         
         [self.tableView reloadData];
     }
@@ -67,10 +69,6 @@
                                                          blue:120.0/256.0
                                                         alpha:1]];
     [self.nextButton setEnabled:false];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(setNextButtonEnable)
-                                                 name:@"RepositoryInfoViewController_setNextButtonEnable"
-                                               object:nil];
 }
 - (void)setNextButtonEnable
 {
@@ -79,9 +77,6 @@
                                                          blue:235.0/256.0
                                                         alpha:1]];
     [self.nextButton setEnabled:true];
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:@"RepositoryInfoViewController_setNextButtonEnable"
-                                                  object:nil];
 }
 - (void)setupDescriptionLabel
 {

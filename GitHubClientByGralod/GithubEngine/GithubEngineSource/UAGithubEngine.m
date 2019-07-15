@@ -40,6 +40,9 @@
 
 
 @implementation UAGithubEngine
+{
+    BOOL isNeedMultiPageLoadRequest;
+}
 
 @synthesize username, password, reachability, isReachable;
 
@@ -382,7 +385,7 @@
         return;
     }
 
-    while (self.isMultiPageRequest && self.nextPageURL)
+    while (isNeedMultiPageLoadRequest && self.isMultiPageRequest && self.nextPageURL)
     {
         [self.multiPageArray addObjectsFromArray:result];
         NSLog(@"result: %@", result);
@@ -1106,7 +1109,7 @@
 - (void)repositoriesForUser:(NSString *)aUser includeWatched:(BOOL)watched success:(UAGithubEngineSuccessBlock)successBlock failure:(UAGithubEngineFailureBlock)failureBlock
 {
     
-    self.isMultiPageRequest = true;
+    isNeedMultiPageLoadRequest = true;
 	[self repositoriesForUser:aUser includeWatched:watched page:1 success:successBlock failure:failureBlock];	
 }
 
@@ -1119,7 +1122,7 @@
 
 - (void)repositoriesWithSuccess:(UAGithubEngineSuccessBlock)successBlock failure:(UAGithubEngineFailureBlock)failureBlock
 {
-    self.isMultiPageRequest = true;
+    isNeedMultiPageLoadRequest = true;
     [self invoke:^(id self){[self sendRequest:@"user/repos" requestType:UAGithubRepositoriesRequest responseType:UAGithubRepositoriesResponse error:nil];} success:successBlock failure:failureBlock];
 }
 
@@ -1204,8 +1207,9 @@
                      success:(UAGithubEngineSuccessBlock)successBlock
                      failure:(UAGithubEngineFailureBlock)failureBlock
 {
-    //TODO: realise this shit
-    self.isMultiPageRequest = false;
+    NSLog(@"commitsForRepository");
+    
+    isNeedMultiPageLoadRequest = false;
     NSString *requestString = [NSString stringWithFormat:@"repos/%@/commits?page=%li", repositoryPath,aListNumber];
     [self invoke:^(id self)
     {

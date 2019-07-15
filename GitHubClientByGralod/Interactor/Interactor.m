@@ -140,11 +140,11 @@ typedef enum GHCRequestErrorType
                          githubEngine = [[UAGithubEngine alloc] initWithUsername:self->userInfo.login
                                                                         password:self->userInfo.password
                                                                 withReachability:true];
-                         NSString *currentUser = @"jesseduffield";
-                         [githubEngine repositoriesForUser:currentUser includeWatched:true success:^(id item)
-                         {
-//                         [githubEngine repositoriesWithSuccess:^(id item)
-//                          {
+//                         NSString *currentUser = @"jesseduffield";
+//                         [githubEngine repositoriesForUser:currentUser includeWatched:true success:^(id item)
+//                         {
+                         [githubEngine repositoriesWithSuccess:^(id item)
+                          {
                               NSLog(@"self->requestType: %u", self->requestType);
                               if(self->requestType == GHCUserRepositoriesDataRequest)
                               {

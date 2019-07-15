@@ -92,15 +92,14 @@ typedef enum GHCRequestErrorType
 {
     NSLog(@"Interactor_authorizationWithLoginAndPassword, \n aLogin: %@, \n aPassword: %@ \n userInfo: %@", aLogin, aPassword,userInfo);
     
-    [presenter setStateWithInt:GHCAuthorizationPresentingState];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self->presenter setStateWithInt:GHCAuthorizationPresentingState];
+    });
     
     requestType = GHCAuthorizationRequest;
 
     if(![aLogin  isEqual: @""]&&aLogin!=nil)
         userInfo = [[UserInfo alloc] initWithLogin:aLogin andPassword:aPassword];
-    //TODO: userInfo checking
-    NSLog(@"requestType: %u", requestType);
-    NSLog(@"userInfo: %@", userInfo);
     
     requestThread = [[NSThread alloc] initWithBlock:^
     {
@@ -113,9 +112,7 @@ typedef enum GHCRequestErrorType
          {
              dispatch_async(dispatch_get_main_queue(), ^{
                  if (self->requestType == GHCAuthorizationRequest)
-                     [self authorizationSuccess:item
-                                          login:aLogin
-                                       password:aPassword];
+                     [self authorizationSuccess:item];
              });
          }
                    failure:^(NSError *error)
@@ -127,28 +124,6 @@ typedef enum GHCRequestErrorType
          }];
     }];
     [requestThread start];
-//    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-//        self->githubEngine_ = [[UAGithubEngine alloc] initWithUsername:self->userInfo.login
-//                                                              password:self->userInfo.password
-//                                                withReachability:true];
-//        [self->githubEngine_ user:self->userInfo.login
-//                    success:^(id item)
-//         {
-//             dispatch_async(dispatch_get_main_queue(), ^{
-//                 if (self->requestType == GHCAuthorizationRequest)
-//                     [self authorizationSuccess:item
-//                                          login:aLogin
-//                                       password:aPassword];
-//             });
-//         }
-//                    failure:^(NSError *error)
-//         {
-//             dispatch_async(dispatch_get_main_queue(), ^{
-//                 if (self->requestType == GHCAuthorizationRequest)
-//                     [self requestFailure:error];
-//             });
-//         }];
-//    });
 }
 
 - (void)loadUserRepositories
@@ -165,9 +140,11 @@ typedef enum GHCRequestErrorType
                          githubEngine = [[UAGithubEngine alloc] initWithUsername:self->userInfo.login
                                                                         password:self->userInfo.password
                                                                 withReachability:true];
-//                         NSString *currentUser = @"lenve";
-                         [githubEngine repositoriesWithSuccess:^(id item)
-                          {
+                         NSString *currentUser = @"jesseduffield";
+                         [githubEngine repositoriesForUser:currentUser includeWatched:true success:^(id item)
+                         {
+//                         [githubEngine repositoriesWithSuccess:^(id item)
+//                          {
                               NSLog(@"self->requestType: %u", self->requestType);
                               if(self->requestType == GHCUserRepositoriesDataRequest)
                               {
@@ -237,14 +214,10 @@ typedef enum GHCRequestErrorType
 }
 
 -(void) authorizationSuccess:(id)item
-            login:(NSString *)aLogin
-            password:(NSString *)aPassword
 {
     NSLog(@"success");
     NSLog(@"%@", [item class]);
     NSDictionary *inputUserInfoDictionary = item;
-    
-    userInfo = [[UserInfo alloc] initWithLogin:aLogin andPassword:aPassword];
     
     NSString *userName = ((NSArray *)[inputUserInfoDictionary
                                       valueForKey:INPUT_USER_INFO_DICTIONARY_USER_NAME_KEY])[0];
@@ -272,7 +245,6 @@ typedef enum GHCRequestErrorType
     [saver saveAuthorizationInfo:userInfo];
     
     [presenter setStateWithInt:GHCUserRepositoriesLoadingPresentingState];
-//    [self loadUserRepositories];
 }
 -(void) requestFailure:(NSError *)error
 {
@@ -406,12 +378,6 @@ typedef enum GHCRequestErrorType
 - (void)loadNextRepoCommitsList
 {
     NSLog(@"Interactor_loadNextRepoCommitsList");
-    dispatch_async(dispatch_get_main_queue(), ^
-                   {
-    [[NSNotificationCenter defaultCenter]
-     postNotificationName:@"RepositoryInfoViewController_setNextButtonUnable"
-     object:nil];
-                   });
     requestType = GHCRepositoryCommitsDataRequest;
     
     RepositoryInfo *repoInfo = repositoriesArray [selectedRepo];
@@ -441,6 +407,7 @@ typedef enum GHCRequestErrorType
                               //TODO: realiseThisLine
                               [self requestFailure:error];
                               [self->presenter setStateWithInt:GHCRepositoryInfoLoadingErrorPresentingState];
+                              self->requestType = GHCNoRequest;
                               NSLog(@"error: %@", error);
                           }];
                      }];
@@ -505,7 +472,7 @@ typedef enum GHCRequestErrorType
     
     NSLog(@"repoCommitsListArray@@ %li",repoCommitsListArray.count);
     [[NSNotificationCenter defaultCenter]
-     postNotificationName:@"RepositoryInfoViewController_setNextButtonEnable"
+     postNotificationName:@"setNeedsUpdateViewControllersData"
      object:nil];
     //*****
 }
@@ -578,7 +545,14 @@ typedef enum GHCRequestErrorType
     {
         presentingRepoCommitsListNumber --;
         [presenter setStateWithInt:GHCRepositoryInfoPresentingState];
-//        [self loadNextRepoCommitsListIfNeed];
     }
+}
+
+- (BOOL)getEnableToPresentNextRepoCommitList
+{
+    if(presentingRepoCommitsListNumber < lastLoadedRepoCommitsListNumber)
+        return true;
+    else
+        return false;
 }
 @end

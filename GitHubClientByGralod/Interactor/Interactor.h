@@ -12,21 +12,31 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface Interactor : NSObject
 - (id)initWithPresenter:(id)aPresenter;
-
-- (void)cancelOperation;
-- (NSString *)getErrorDescription;
-- (NSString *)getUsersDescription;
-- (id)getUsersDescriptionImage;
+//действие введены данные для авторизации
 - (void)authorizationDataDidEnter:(NSDictionary *)aData;
-- (NSInteger)getNumberOfCellsForRepositoriesTableView;
-- (NSDictionary *)getDataForRepoTableViewCellAtIndex:(NSInteger)aCellIndex;
-- (void)loadUserRepositories;
+//действие выхода из системы
 - (void)logoutAction;
+//действие отмены запросов
+- (void)cancelOperation;
+//запрос описания ошибки
+- (NSString *)getErrorDescription;
+//запрос информации пользователя
+- (id)getUsersDescriptionImage;
+- (NSString *)getUsersDescription;
+
+//запрос загрузки репозиториев пользователя
+- (void)loadUserRepositories;
+//запрос количества репозиториев пользователя
+- (NSInteger)getNumberOfCellsForRepositoriesTableView;
+//запрос короткой информации репозитория
+- (NSDictionary *)getDataForRepoTableViewCellAtIndex:(NSInteger)aCellIndex;
+
 - (void)repoTableViewDidSelectRowAtIndexPath:(NSInteger)aRepositoryId;
 - (NSString *)getRepositoryDescription;
 - (void)repoInfoCloseAction;
 - (BOOL)presentingFirstRepoCommitsList;
 - (BOOL)presentingLastRepoCommitsList;
+- (BOOL)getEnableToPresentNextRepoCommitList;
 - (NSInteger)numberOfRowsInCommitsTableView;
 - (NSDictionary *)getSetupDataForCommitCellAtRow:(NSInteger)aRow;
 - (void)reloadActionInCommitTableView;

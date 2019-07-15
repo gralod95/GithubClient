@@ -379,7 +379,7 @@ didEnterActionInViewController:(UIViewController *)aViewController
 #pragma mark
 #pragma mark RepositoryInfoViewControllerDelegate
 #pragma mark
-- (BOOL)getEnableStateForButton:(UIButton *)aButton
+- (BOOL)getHiddenStateForButton:(UIButton *)aButton
                inViewController:(UIViewController *)aViewController
 {
     if([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
@@ -391,28 +391,54 @@ didEnterActionInViewController:(UIViewController *)aViewController
             case GHCRepositoryInfoPresentingState:
                 //get list number from interator
                 if([interactor presentingFirstRepoCommitsList])
-                    return false;
-                else
                     return true;
+                else
+                    return false;
                 break;
                 
             case GHCRepositoryInfoLoadingPresentingState:
             case GHCRepositoryInfoLoadingErrorPresentingState:
-                return false;
+                return true;
                 break;
             default:
-                NSLog(@"unreachable state");
+                NSLog(@"Presenter_getHiddenStateForButton: inViewController: unknown state!!!");
                 break;
         }
+        else if([aButton.restorationIdentifier isEqual:NEXT_BUTTON_RESTORATION_IDENTIFIER])
+            switch (state)
+        {
+            case GHCRepositoryInfoPresentingState:
+                if([interactor presentingLastRepoCommitsList])
+                    return true;
+                else
+                    return false;
+                break;
+            case GHCRepositoryInfoLoadingErrorPresentingState:
+            case GHCRepositoryInfoLoadingPresentingState:
+                return true;
+                break;
+            default:
+                NSLog(@"Presenter_getHiddenStateForButton: inViewController: unknown state!!!");
+                break;
+        }
+        else
+            NSLog(@"Presenter_getHiddenStateForButton: inViewController: unknown button!!!");
+    }
+    else
+        NSLog(@"Presenter_getHiddenStateForButton: inViewController: unknown viewController!!!");
+    return true;
+}
+- (BOOL)getEnableStateForButton:(UIButton *)aButton
+               inViewController:(UIViewController *)aViewController
+{
+    if([aViewController.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_IDENTIFIER])
+    {
         if([aButton.restorationIdentifier isEqual:NEXT_BUTTON_RESTORATION_IDENTIFIER])
             switch (state)
         {
             case GHCRepositoryInfoPresentingState:
                 //get list number from interator
-                if([interactor presentingLastRepoCommitsList])
-                    return false;
-                else
-                    return true;
+                return [interactor getEnableToPresentNextRepoCommitList];
                 break;
             case GHCRepositoryInfoLoadingErrorPresentingState:
             case GHCRepositoryInfoLoadingPresentingState:
@@ -422,9 +448,11 @@ didEnterActionInViewController:(UIViewController *)aViewController
                 NSLog(@"unreachable state");
                 break;
         }
+        else
+            NSLog(@"Presenter_getEnableStateForButton: inViewController: unknown button!!!");
     }
     else
-        NSLog(@"unknown view controller or unknown request from view controller: %@", aViewController);
+        NSLog(@"Presenter_getEnableStateForButton: inViewController: unknown viewController!!!");
     return false;
 }
 
@@ -675,18 +703,24 @@ didEnterActionInViewController:(UIViewController *)aViewController
         return 117.0f;
     else if([tableView.restorationIdentifier isEqual:REPOSITORY_INFO_VIEW_CONTROLLER_GENERAL_TABLE_VIEW_IDENTIFIER])
     {
-        //dinamic height for cell
-        CGFloat heightForMessageLabel = 22.0f;
-        NSDictionary *setupDataDictionary = [interactor getSetupDataForCommitCellAtRow:indexPath.row];
-        NSString *commitMessageContent = [setupDataDictionary valueForKey:@"commitMessageContent"];
-        UILabel *aLabel = [UILabel new];
-//        [aLabel setFont:[UIFont fontWithName:@"system" size:14]];
-        [aLabel setNumberOfLines:-1];
-        [aLabel setFrame:CGRectMake(0, 0, tableView.frame.size.width - 16, FLT_MAX)];
-        [aLabel setText:commitMessageContent];
-        [aLabel sizeToFit];
-        heightForMessageLabel = aLabel.frame.size.height;
-        return 106.0f + heightForMessageLabel;
+        if(state == GHCRepositoryInfoPresentingState)
+        {
+            //dinamic height for cell
+            CGFloat heightForMessageLabel = 22.0f;
+            NSDictionary *setupDataDictionary = [interactor getSetupDataForCommitCellAtRow:indexPath.row];
+            NSString *commitMessageContent = [setupDataDictionary valueForKey:@"commitMessageContent"];
+            UILabel *aLabel = [UILabel new];
+            [aLabel setNumberOfLines:-1];
+            [aLabel setFrame:CGRectMake(0, 0, tableView.frame.size.width - 16, FLT_MAX)];
+            [aLabel setText:commitMessageContent];
+            [aLabel sizeToFit];
+            heightForMessageLabel = aLabel.frame.size.height;
+            return 106.0f + heightForMessageLabel;
+        }
+        else
+        {
+            return 50.0f;
+        }
     }
     else
         NSLog(@"unknown table view: %@", tableView);
